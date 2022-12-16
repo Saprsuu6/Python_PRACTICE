@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+#server logs
+CGI/access.log
+CGI/error.log
+
 # C extensions
 *.so
 

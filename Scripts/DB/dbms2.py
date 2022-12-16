@@ -69,7 +69,7 @@ class UserDAO:
         fields = ','.join(f"`{name}`" for name in names).replace(
             'passw', 'pass')
         placeholders = ','.join(f"%({name})s" for name in names)
-        sql = f"INSERT INTO Users({fields}) VALUES({placeholders})"
+        sql = f"INSERT INTO users({fields}) VALUES({placeholders})"
 
         try:
             cursor = self.db.cursor()
@@ -211,24 +211,24 @@ def main(db: mysql.connector.MySQLConnection) -> None:
 
     userDao = UserDAO(db)
     # print(userDao.add_user(user))
-    # print(userDao.get_users())
+    print(userDao.get_users())
     # print(userDao.get_users(ignore_deleted=False))
-    print(userDao.get_user(id='2dde445a-c125-45bb-a181-003c25b4f568',
-                           login=None, ignore_deleted=False))  # не игнорирование удалённого пользователя
-    print(userDao.is_login_free('Andry'))
-    print(userDao.is_login_free('admin'))
-    try:
-        print(userDao.auth_user('user', '123'))
-    except Exception as err:
-        print(err)
-    try:
-        print(userDao.auth_user('user', '124'))
-    except Exception as err:
-        print(err)
-    try:
-        print(userDao.auth_user('user2', '124'))
-    except Exception as err:
-        print(err)
+    # print(userDao.get_user(id='2dde445a-c125-45bb-a181-003c25b4f568',
+    # login=None, ignore_deleted=False))  # не игнорирование удалённого пользователя
+    # print(userDao.is_login_free('Andry'))
+    # print(userDao.is_login_free('admin'))
+    # try:
+    #    print(userDao.auth_user('user', '123'))
+   # except Exception as err:
+   #     print(err)
+   # try:
+   #     print(userDao.auth_user('user', '124'))
+   # except Exception as err:
+    #    print(err)
+    # try:
+   #     print(userDao.auth_user('user2', '124'))
+   # except Exception as err:
+   #     print(err)
     # print( userDao.get_user( id = '!953daa4e-6df3-4d5c-8c4a-75bca62bb151' ) )
     # print( userDao.get_user( login = 'admin' ) )
     # print( userDao.get_user( login = 'nobody' ) )
@@ -241,7 +241,7 @@ def main(db: mysql.connector.MySQLConnection) -> None:
 
 if __name__ == "__main__":
     pars = {
-        "host":     "localhost",
+        "host":     "py191.c9zfelzklz62.us-east-1.rds.amazonaws.com",
         "port":     3306,
         "database": "py191",
         "user":     "py191_user",
