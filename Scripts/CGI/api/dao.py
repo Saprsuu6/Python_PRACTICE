@@ -193,49 +193,12 @@ class UserDAO:
                 raise Exception('Passwords missmatch')
 
 
-def main(db: mysql.connector.MySQLConnection) -> None:
-    user = User()
-    '''
-    user.login = "moder"
-    user.passw = "123"
-    user.name = "Post Moderator"
-    user.avatar = None
-    user.email = "moder@ukr.net"
-    user.login = "user"
-    user.passw = "123"
-    user.name = "Experienced User"
-    user.avatar = None
-    user.email = "user@ukr.net"
-    '''
+def login_validation(login: str) -> None:
+    pass
 
-    userDao = UserDAO(db)
-    # print(userDao.add_user(user))
-    print(userDao.get_users())
-    # print(userDao.get_users(ignore_deleted=False))
-    # print(userDao.get_user(id='2dde445a-c125-45bb-a181-003c25b4f568',
-    # login=None, ignore_deleted=False))  # не игнорирование удалённого пользователя
-    # print(userDao.is_login_free('Andry'))
-    # print(userDao.is_login_free('admin'))
-    # try:
-    #    print(userDao.auth_user('user', '123'))
-   # except Exception as err:
-   #     print(err)
-   # try:
-   #     print(userDao.auth_user('user', '124'))
-   # except Exception as err:
-    #    print(err)
-    # try:
-   #     print(userDao.auth_user('user2', '124'))
-   # except Exception as err:
-   #     print(err)
-    # print( userDao.get_user( id = '!953daa4e-6df3-4d5c-8c4a-75bca62bb151' ) )
-    # print( userDao.get_user( login = 'admin' ) )
-    # print( userDao.get_user( login = 'nobody' ) )
-    # user = userDao.get_user(login='user')
-    # print(user)
-    # print(userDao.delete(user))
-    # user.email = "admin@gmail.com"
-    # print( userDao.update( user ) )
+
+def password_validation(password: str) -> None:
+    pass
 
 
 if __name__ == "__main__":
@@ -259,59 +222,3 @@ if __name__ == "__main__":
         main(connection)   # точка инъекции
     finally:
         connection.close()
-
-
-'''
-CREATE TABLE `users` (
-  `id`                  char(36)    NOT NULL       COMMENT 'UUID',
-  `login`               varchar(32) NOT NULL,
-  `pass`                char(40)    NOT NULL       COMMENT 'SHA-160 hash',
-  `name`                tinytext    NOT NULL,
-  `salt`                char(40)    DEFAULT NULL   COMMENT 'SHA-160 of random',
-  `avatar`              varchar(64) DEFAULT NULL   COMMENT 'Avatar filename',
-  `email`               varchar(64) DEFAULT NULL   COMMENT 'User E-mail',
-  `email_code`          char(6)     DEFAULT NULL   COMMENT 'E-mail confirm code',
-  `email_code_attempts` int(11)     DEFAULT 0      COMMENT 'Count of invalid E-mail confirmations',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
-Традиционно для удаления сущностей в таблицах закладывают доп. поля типа is_deleted (bool) либо
-del_dt(datetime) момент удаления. В более сложных системах ведется журнал удалений: кто-что-когда-коммент
-ALTER TABLE users ADD COLUMN IF NOT EXISTS del_dt DATETIME DEFAULT NULL ;
-Python              ~socket              DBMS
-db.cursor() <-------------------------->
-cur.execute(sql) -----(SELECT)---------> PLAN - схема выполнения
-cur.fetchone()  -----------------------> получение одной строки (одно выполнение PLAN)
-                <----------------------- отправка рез-та
-Python              ~socket              DBMS
-db.cursor() <-------------------------->
-cur.execute(sql) -----(SELECT)---------> PLAN - схема выполнения + выполнение несколько раз
-                        (буфер)<-------- для заполнения буфера     
-cur.fetchone()  ----->(буфер)                  
-               <------ получение одной строки 
-                        (буфер) <------- Если опустошается, то заполнить
-Подготовленный запрос
-Python              ~socket              DBMS
-db.cursor() <-------------------------->
-                подготовка запроса
-cur.prepare(sql) -----(SELECT ?)-------> PLAN - схема выполнения (создается временная хранимая процедура с параметром)
-                выполнение запроса
-cur.execute(data1) -----(data1)--------> выполнение (EXEC) хранимой процедуры с аргументом data1
-cur.fetchone()  -----------------------> получение одной строки (одно выполнение PLAN)
-                <----------------------- отправка рез-та
-         повторное выполнение не посылает повторного SQL (SELECT)
-cur.execute(data2) -----(data2)--------> выполнение (EXEC) хранимой процедуры с аргументом data2
-cur.fetchone()  -----------------------> получение одной строки (одно выполнение PLAN)
-                <----------------------- отправка рез-та
-         возможно многократное выполнение       
-cur.close()    ------------------------> разрушение временной процедуры
-Транзакция
-Python              ~socket              DBMS
-db.cursor() <-------------------------->
-cur.query("CREATE TRANSACTION") -------> Начало транзакции (присваивается id транзакции)
-cur.query(sql1)                          на время транзакции каждая команда сохраняет
-cur.query(sql2)                          предыдущее состояние для возможности отмены транзакции
-cur.query(sql3)                          а также блокирует таблицу/строки для других запросов (не из этой транзакции)
-cur.query("COMMIT TRANSACTION") -------> конец транзакции
-                       либо
-cur.query("ROLLBACK TRANSACTION") -----> отмена транзакции
-'''

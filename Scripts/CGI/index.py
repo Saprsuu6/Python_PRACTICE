@@ -26,6 +26,6 @@ print(f"""<!doctype html />
 </head>
 <body>
     <h1>Hello CGI World!</h1>
-    {get_ul()}
+    {os.environ.items()}
 </body>
 </html>""")
