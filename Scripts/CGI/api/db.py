@@ -1,5 +1,5 @@
 conf = {
-    "host":     "py191mysql.c9zfelzklz62.us-east-1.rds.amazonaws.com",
+    "host":     "localhost",
     "port":     3306,
     "database": "py191",
     "user":     "py191_user",

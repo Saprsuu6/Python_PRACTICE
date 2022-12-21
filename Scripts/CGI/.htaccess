@@ -1,3 +1,4 @@
 RewriteEngine on
-RewriteRule   auth    api/auth.py   [END,QSA]
-RewriteRule   items   api/items.py  [END,QSA]
+RewriteRule   ^auth$   api/auth.py   [END,QSA]
+RewriteRule   ^items$   api/items.py  [END,QSA]
+RewriteRule   ^$  index.html  [END,QSA]

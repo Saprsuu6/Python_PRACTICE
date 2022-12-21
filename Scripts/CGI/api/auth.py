@@ -1,10 +1,13 @@
 #!C:/Python/python.exe
 
-import os
-import base64
-import mysql.connector
-import db   # config for db connection
+import logging
 import dao  # User, UserDAO
+import db   # config for db connection
+import mysql.connector
+import base64
+import os
+import sys
+import db
 
 # Authorization Server
 
@@ -37,21 +40,20 @@ else:
 # у скрипті info підготуємо зразок для "admin:123"  --> YWRtaW46MTIz
 # декодуємо credentials
 
-'''
 try:
     data = base64.b64decode(credentials, validate=True).decode('utf-8')
 except:
     send401("Credentials invalid: Base64 string required")
     exit()
-'''
-
 
 # Перевіряємо формат (у data має бути :)
-if not ':' in credentials:
+if not ':' in data:
     send401("Credentials invalid: Login:Password format expected")
     exit()
 
-user_login, user_password = credentials.split(':', maxsplit=1)
+
+user_login, user_password = data.split(':', maxsplit=1)
+
 
 # підключаємось до БД
 try:
@@ -60,8 +62,10 @@ except mysql.connector.Error as err:
     send401(err)
     exit()
 
+
 # підключаємо userdao
 user_dao = dao.UserDAO(db)
+
 
 user = user_dao.auth_user(user_login, user_password)
 

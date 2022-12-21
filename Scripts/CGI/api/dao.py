@@ -3,6 +3,7 @@ import hashlib
 import mysql.connector
 import random
 import uuid
+import re
 
 
 class User:
@@ -193,32 +194,15 @@ class UserDAO:
                 raise Exception('Passwords missmatch')
 
 
-def login_validation(login: str) -> None:
-    pass
+def login_validation(login: str, pattern='^[a-zA-Z](.[a-zA-Z0-9_-]*)$') -> None:
+    result = re.match(login, pattern)
+
+    if result == None:
+        raise Exception("Login are not equals with pattern")
 
 
-def password_validation(password: str) -> None:
-    pass
+def password_validation(password: str, pattern='/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^\w\s]).{6,}/') -> None:
+    result = re.match(password, pattern)
 
-
-if __name__ == "__main__":
-    pars = {
-        "host":     "py191.c9zfelzklz62.us-east-1.rds.amazonaws.com",
-        "port":     3306,
-        "database": "py191",
-        "user":     "py191_user",
-        "password": "pass_191",
-
-        "charset":  "utf8mb4",
-        "use_unicode": True,
-        "collation": "utf8mb4_general_ci"
-    }
-    try:
-        connection = mysql.connector.connect(**pars)
-    except mysql.connector.Error as err:
-        print("Connection:", err)
-        exit()
-    else:
-        main(connection)   # точка инъекции
-    finally:
-        connection.close()
+    if result == None:
+        raise Exception("Password are not equals with pattern")
