@@ -276,3 +276,20 @@ class AccessTokenDAO:
             except:
                 pass
         return None
+
+    def get_by_user(self, user: User) -> AccessToken | None:
+        sql = "SELECT * FROM access_tokens WHERE user_id = %s"
+        try:
+            cursor = self.db.cursor(dictionary=True)
+            cursor.execute(sql, (user.id, ))
+            row = cursor.fetchone()
+            if row:
+                return AccessToken(row)
+        except:
+            pass
+        finally:
+            try:
+                cursor.close()
+            except:
+                pass
+        return None
