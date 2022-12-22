@@ -45,6 +45,12 @@
       });
       function itemsButtonClick(e) {
         var access_token = window.sessionStorage.getItem("access_token");
+        var term = new Date(window.sessionStorage.getItem("expires_in"));
+        alert(
+          new Date() >= term
+            ? "Срок действия токена истёк"
+            : "Срок действия токена не истёк"
+        );
         if (!access_token) {
           alert("Сначала авторизуйтесь");
           return;
@@ -85,6 +91,7 @@
               console.log(j);
               // сохраняем полученный токен
               window.sessionStorage.setItem("access_token", j.access_token);
+              window.sessionStorage.setItem("expires_in", j.expires_in);
             });
           }
         });
