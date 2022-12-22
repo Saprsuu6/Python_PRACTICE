@@ -17,7 +17,7 @@ class MyInfo:
 
 def fill_info(my_info: MyInfo) -> None:
     my_info.add_info({'Name': 'Артемов В.П.', 'Sex': 'Ч',
-                      'BD': datetime.date(1992, 12, 11), 'Country': 'Німеччина', 'Avia_company': 'Lufthansa', 'Departure_date': datetime.date(2022, 2, 12), 'Departure_time': datetime.time(16, 20)}, 'Class': 'Економ', 'Price': 340)
+                      'BD': datetime.date(1992, 12, 11), 'Country': 'Німеччина', 'Avia_company': 'Lufthansa', 'Departure_date': datetime.date(2022, 2, 12), 'Departure_time': datetime.time(16, 20), 'Class': 'Економ', 'Price': 340})
     my_info.add_info({'Name': 'Крейд С.Р.', 'Sex': 'Ч',
                       'BD': datetime.date(2015, 11, 12), 'Country': 'Ізраїль', 'МАУ': 'Lufthansa', 'Departure_date': datetime.date(2022, 10, 13), 'Departure_time': datetime.time(22, 30), 'Class': 'Бізнес', 'Price': 470})
 
