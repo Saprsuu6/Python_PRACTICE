@@ -4,26 +4,80 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- <link rel="stylesheet" href="./style.css" /> -->
     <title>Py191</title>
   </head>
   <body>
-    <h1>Py 191</h1>
-    <label>Логин: <input id="user-login" /></label><br />
-    <label>Пароль: <input id="user-password" /></label><br />
-    <input type="button" value="Войти" id="login-button" />
-    <p id="out"></p>
+    <div>
+      <h1>Py 191</h1>
+      <div id="top_form">
+        <div>
+          <label for="user-login">Логин: </label>
+          <input id="user-login" placeholder="You login" />
+        </div>
+
+        <div>
+          <label for="user-password">Пароль:</label>
+          <input id="user-password" placeholder="You password" />
+        </div>
+
+        <button id="login-button">Войти</button>
+      </div>
+      <br />
+      <div id="content"></div>
+      <div id="bottom_form">
+        <div>
+          <label for="token">Токен:</label>
+          <input id="token" placeholder="You token" /><br />
+        </div>
+
+        <div>
+          <input type="button" value="Подтвердить токен" id="items-button" />
+          <p id="out"></p>
+        </div>
+      </div>
+    </div>
 
     <script>
+      let main_token = undefined;
+
       document.addEventListener("DOMContentLoaded", () => {
         const loginButton = document.querySelector("#login-button");
         if (!loginButton) throw "DOMContentLoaded: #login-button not found";
         loginButton.addEventListener("click", loginButtonClick);
+
+        const itemsButton = document.querySelector("#items-button");
+        if (!itemsButton) throw "DOMContentLoaded: #items-button not found";
+        itemsButton.addEventListener("click", itemsButtonClick);
       });
+
+      function itemsButtonClick(e) {
+        if (main_token !== undefined) {
+          const tokenInput = document.querySelector("#token");
+          if (!tokenInput) throw "tokeInput: #token not found";
+
+          const token = tokenInput.value;
+
+          if (token.trim() == "") {
+            setContent("Please enter a token");
+            return;
+          } else if (token != main_token) {
+            setContent("Tokens are missmatch");
+            return;
+          }
+
+          setContent("You were succesfully authorisated");
+        } else {
+          setContent("You were not authorisated");
+        }
+      }
+
       function loginButtonClick(e) {
         const userLogin = document.querySelector("#user-login");
-        if (!userLogin) throw "loginButtonClick: #user-login not found";
+        if (!userLogin) throw "loginInput: #user-login not found";
+
         const userPassword = document.querySelector("#user-password");
-        if (!userPassword) throw "loginButtonClick: #user-password not found";
+        if (!userPassword) throw "passwordInput: #user-password not found";
         // проверить поля на пустоту, логин - на допустимые символы
         const credentials = btoa(userLogin.value + ":" + userPassword.value);
         fetch("/auth", {
@@ -34,8 +88,21 @@
         }).then((r) => {
           if (r.status != 200) {
             alert("Логин или пароль неправильные");
+          } else {
+            r.text().then((t) => {
+              tj = JSON.parse(t);
+              console.log(tj);
+
+              main_token = tj.access_token;
+              setContent(tj.access_token);
+            });
           }
         });
+      }
+
+      function setContent(content) {
+        const block = document.querySelector("#content");
+        block.innerHTML = `<p>${content}</p>`;
       }
     </script>
   </body>

@@ -65,26 +65,32 @@ except mysql.connector.Error as err:
 
 # підключаємо userdao
 user_dao = dao.UserDAO(db)
+access_token_dao = dao.AccessTokenDAO(db)
 
 
+# получаем пользователя по логину и паролю
 user = user_dao.auth_user(user_login, user_password)
-
 if user is None:
     send401("Credentials rejected")
     exit()
 
+# генерируем токен для пользователя
+access_token = access_token_dao.create(user)
+if not access_token:
+    send401("Token creation error")
+    exit()
 
 # Успішне завершення
-print("Status: 200 OKey")
-print("Content-Type: application/json;charset=UTF-8")
+print("Status: 200 OK")
+print("Content-Type: application/json; charset=UTF-8")
+print("Cache-Control: no-store")
+print("Pragma: no-cache")
 print()
-print(f'''
-{{
-    "access_token": "{user.id}",
+print(f'''{{
+    "access_token": "{access_token.token}",
     "token_type": "Bearer",
-    "expires_in": 3600
- }} ''', end='')
-
+    "expires_in": "{access_token.expires}"
+}}''', end='')
 
 # An example of such a (https://datatracker.ietf.org/doc/html/rfc6750 page 9)
 #    response is:
