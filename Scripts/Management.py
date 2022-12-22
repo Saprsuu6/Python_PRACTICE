@@ -28,6 +28,8 @@ def fill_info(my_info: MyInfo) -> None:
                       'BD': datetime.date(1980, 1, 21), 'Country': 'Туреччина', 'Avia_company': 'Turkish Airlines', 'Departure_date': datetime.date(2021, 10, 6), 'Departure_time': datetime.time(7, 30), 'Class': 'Перший', 'Price': 440})
     my_info.add_info({'Name': 'Горкун В.Л.', 'Sex': 'ч',
                       'BD': datetime.date(2016, 12, 13), 'Country': 'Іспанія', 'Avia_company': 'МАУ', 'Departure_date': datetime.date(2020, 11, 19), 'Departure_time': datetime.time(18, 40), 'Class': 'Бізнес', 'Price': 490})
+    my_info.add_info({'Name': 'Горяєв С.Н', 'Sex': 'ч',
+                      'BD': datetime.date(1957, 9, 30), 'Country': 'Франція', 'Avia_company': 'AirFrance', 'Departure_date': datetime.date(2021, 12, 3), 'Departure_time': datetime.time(12, 30), 'Class': 'Економ', 'Price': 395})
 
 
 def main():
