@@ -1,5 +1,8 @@
 #!C:/Python/python.exe
 
+import mysql.connector
+import dao
+import db
 import os
 # API demo - доступ до ресурсу обмеженого доступу (Resource Server)
 
@@ -21,15 +24,31 @@ else:
     send401()
     exit()
 
-if auth_header.startswith('Bearer'):
-    token = auth_header[7:]
-else:
-    send401("Authorization scheme Bearer required")
+# Проверяем наличие заголовка Authorization
+if not auth_header:
+    send401("Authorization header required")
     exit()
 
-# Завдання: забезпечити перевірку токена Bearer-авторизації (його належність)
-# до користувача з БД. Сформувати відповідь або з контентом умовного об'єкту
-# з даними (який імітує вибірку з БД), або 401 статус
+# Проверяем схему авторизации Bearer
+if not auth_header.startswith('Bearer'):
+    send401("Bearer Authorization header required")
+    exit()
+
+# Извлекаем токен
+access_token = auth_header[7:]   # убираем 'Bearer' + space
+
+try:
+    con = mysql.connector.connect(**db.conf)
+except:
+    send401("Internal Error")
+    exit()
+
+token = dao.AccessTokenDAO(con).get(access_token)
+if not token:
+    send401("Token rejected")
+    exit()
+
+# Проверяем активность токена (срок)
 
 # Успішне завершення
 print("Status: 200 OK")
