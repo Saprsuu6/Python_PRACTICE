@@ -39,15 +39,15 @@
         if (window.sessionStorage.getItem("access_token") != null) {
           var div = document.querySelector("#top_form");
           div.setAttribute("dispaly", "none");
+
+          const loginButton = document.querySelector("#login-button");
+          if (!loginButton) throw "DOMContentLoaded: #login-button not found";
+          loginButton.addEventListener("click", loginButtonClick);
+
+          const itemsButton = document.querySelector("#items-button");
+          if (!itemsButton) throw "DOMContentLoaded: #items-button not found";
+          itemsButton.addEventListener("click", itemsButtonClick);
         }
-
-        const loginButton = document.querySelector("#login-button");
-        if (!loginButton) throw "DOMContentLoaded: #login-button not found";
-        loginButton.addEventListener("click", loginButtonClick);
-
-        const itemsButton = document.querySelector("#items-button");
-        if (!itemsButton) throw "DOMContentLoaded: #items-button not found";
-        itemsButton.addEventListener("click", itemsButtonClick);
       });
       function itemsButtonClick(e) {
         var access_token = window.sessionStorage.getItem("access_token");
