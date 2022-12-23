@@ -46,15 +46,15 @@
       function itemsButtonClick(e) {
         var access_token = window.sessionStorage.getItem("access_token");
         var term = new Date(window.sessionStorage.getItem("expires_in"));
+        if (!access_token) {
+          alert("Сначала авторизуйтесь");
+          return;
+        }
         alert(
           new Date() >= term
             ? "Срок действия токена истёк"
             : "Срок действия токена не истёк"
         );
-        if (!access_token) {
-          alert("Сначала авторизуйтесь");
-          return;
-        }
         fetch("/items", {
           method: "GET",
           headers: {
