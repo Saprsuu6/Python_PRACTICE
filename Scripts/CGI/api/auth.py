@@ -75,7 +75,13 @@ if user is None:
     exit()
 
 # генерируем токен для пользователя
-access_token = access_token_dao.create(user)
+
+access_token = access_token_dao.get_by_user(user)
+
+if access_token != None:
+    access_token = access_token_dao.create(user)
+
+#access_token = access_token_dao.create(user)
 
 if not access_token:
     send401("Token creation error")
