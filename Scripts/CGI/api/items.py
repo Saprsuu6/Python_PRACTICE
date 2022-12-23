@@ -4,16 +4,9 @@ import mysql.connector
 import dao
 import db
 import os
+import db_connect
+import errors
 # API demo - доступ до ресурсу обмеженого доступу (Resource Server)
-
-
-def send401(message: str = None) -> None:
-    print("Status: 401 Unauthorized")
-    print('WWW-Authenticate: Bearer realm "Authorization required" ')
-    print()
-    if message:
-        print(message)
-    return
 
 
 # дістаємо заголовок Authorization
@@ -21,31 +14,28 @@ if 'HTTP_AUTHORIZATION' in os.environ.keys():
     auth_header = os.environ['HTTP_AUTHORIZATION']
 else:
     # відправляємо 401
-    send401()
+    errors.send401()
     exit()
 
 # Проверяем наличие заголовка Authorization
 if not auth_header:
-    send401("Authorization header required")
+    errors.send401("Authorization header required")
     exit()
 
 # Проверяем схему авторизации Bearer
 if not auth_header.startswith('Bearer'):
-    send401("Bearer Authorization header required")
+    errors.send401("Bearer Authorization header required")
     exit()
 
 # Извлекаем токен
 access_token = auth_header[7:]   # убираем 'Bearer' + space
 
-try:
-    con = mysql.connector.connect(**db.conf)
-except:
-    send401("Internal Error")
-    exit()
+# підключаємось до БД
+connection = db_connect.connect()
 
-token = dao.AccessTokenDAO(con).get(access_token)
+token = dao.AccessTokenDAO(connection).get(access_token)
 if not token:
-    send401("Token rejected")
+    errors.send401("Token rejected")
     exit()
 
 # Проверяем активность токена (срок)

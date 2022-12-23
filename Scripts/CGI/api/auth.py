@@ -1,14 +1,11 @@
 #!C:/Python/python.exe
 
 import logging
-import dao  # User, UserDAO
-import db   # config for db connection
-import mysql.connector
+import dao
+import errors
 import base64
 import os
-import sys
-import db
-from datetime import datetime
+import db_connect
 
 # Authorization Server
 
@@ -16,28 +13,19 @@ logging.basicConfig(filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
 
 
-def send401(message: str = None) -> None:
-    print("Status: 401 Unauthorized")
-    print('WWW-Authenticate: Basic realm "Authorization required" ')
-    print()
-    if message:
-        print(message)
-    return
-
-
 # дістаємо заголовок Authorization
 if 'HTTP_AUTHORIZATION' in os.environ.keys():
     auth_header = os.environ['HTTP_AUTHORIZATION']
 else:
     # відправляємо 401
-    send401()
+    errors.send401()
     exit()
 
 # Перевіряємо схему авторизації - має бути Basic
 if auth_header.startswith('Basic'):
     credentials = auth_header[6:]
 else:
-    send401("Authorization scheme Basic required")
+    errors.send401("Authorization scheme Basic required")
     exit()
 
 # credentials (параметр заголовку) - це Base64 кодований рядок "логін:пароль"
@@ -47,12 +35,12 @@ else:
 try:
     data = base64.b64decode(credentials, validate=True).decode('utf-8')
 except:
-    send401("Credentials invalid: Base64 string required")
+    errors.send401("Credentials invalid: Base64 string required")
     exit()
 
 # Перевіряємо формат (у data має бути :)
 if not ':' in data:
-    send401("Credentials invalid: Login:Password format expected")
+    errors.send401("Credentials invalid: Login:Password format expected")
     exit()
 
 
@@ -60,22 +48,18 @@ user_login, user_password = data.split(':', maxsplit=1)
 
 
 # підключаємось до БД
-try:
-    db = mysql.connector.connect(**db.conf)
-except mysql.connector.Error as err:
-    send401(err)
-    exit()
+connection = db_connect.connect()
 
 
 # підключаємо userdao
-user_dao = dao.UserDAO(db)
-access_token_dao = dao.AccessTokenDAO(db)
+user_dao = dao.UserDAO(connection)
+access_token_dao = dao.AccessTokenDAO(connection)
 
 
 # получаем пользователя по логину и паролю
 user = user_dao.auth_user(user_login, user_password)
 if user is None:
-    send401("Credentials rejected")
+    errors.send401("Credentials rejected")
     exit()
 
 # генерируем токен для пользователя
@@ -83,14 +67,14 @@ if user is None:
 access_token = access_token_dao.get_by_user(user)
 # use timedelta to set the different between data
 #date_time_obj = datetime.strptime(access_token.expires, '%Y-%m-%d %H:%M:%S')
-#logging.warning(access_token.expires)
-   #access_token.expires, "%Y-%m-%d %H:%M:%S").date())
+# logging.warning(access_token.expires)
+# access_token.expires, "%Y-%m-%d %H:%M:%S").date())
 
 if access_token == None:
     access_token = access_token_dao.create(user)
 
 if not access_token:
-    send401("Token creation error")
+    errors.send401("Token creation error")
     exit()
 
 # Успішне завершення
