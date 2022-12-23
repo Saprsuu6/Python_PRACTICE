@@ -1,21 +1,15 @@
 #!C:/Python/python.exe
 
-import mysql.connector
 import dao
-import db
-import os
 import db_connect
 import errors
+import check_auth
+import genral_header
 # API demo - доступ до ресурсу обмеженого доступу (Resource Server)
 
 
 # дістаємо заголовок Authorization
-if 'HTTP_AUTHORIZATION' in os.environ.keys():
-    auth_header = os.environ['HTTP_AUTHORIZATION']
-else:
-    # відправляємо 401
-    errors.send401()
-    exit()
+auth_header = check_auth.check_auth()
 
 # Проверяем наличие заголовка Authorization
 if not auth_header:
@@ -41,8 +35,7 @@ if not token:
 # Проверяем активность токена (срок)
 
 # Успішне завершення
-print("Status: 200 OK")
-print("Content-Type: application/json; charset=UTF-8")
+genral_header.send_header()
 print()
 print(f'"{token}"')
 

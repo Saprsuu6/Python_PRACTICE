@@ -4,8 +4,9 @@ import logging
 import dao
 import errors
 import base64
-import os
 import db_connect
+import check_auth
+import genral_header
 
 # Authorization Server
 
@@ -14,12 +15,7 @@ logging.basicConfig(filename='app.log', filemode='w',
 
 
 # дістаємо заголовок Authorization
-if 'HTTP_AUTHORIZATION' in os.environ.keys():
-    auth_header = os.environ['HTTP_AUTHORIZATION']
-else:
-    # відправляємо 401
-    errors.send401()
-    exit()
+auth_header = check_auth.check_auth()
 
 # Перевіряємо схему авторизації - має бути Basic
 if auth_header.startswith('Basic'):
@@ -78,8 +74,7 @@ if not access_token:
     exit()
 
 # Успішне завершення
-print("Status: 200 OK")
-print("Content-Type: application/json; charset=UTF-8")
+genral_header.send_header()
 print("Cache-Control: no-store")
 print("Pragma: no-cache")
 print()
