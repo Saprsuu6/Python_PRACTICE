@@ -1,4 +1,5 @@
 import datetime
+from datetime import datetime as date_now
 
 
 class MyInfo:
@@ -38,13 +39,157 @@ def fill_info(my_info: MyInfo) -> None:
                       'BD': datetime.date(1980, 6, 25), 'Country': 'Німеччина', 'Avia_company': 'Lufthansa', 'Departure_date': datetime.date(2020, 12, 23), 'Departure_time': datetime.time(16, 20), 'Class': 'Бізнес', 'Price': 450})
 
 
+def first_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if person['BD'].year > 1960 and person['Sex'] == 'ж':
+            print("Name:", person['Name'])
+            count += 1
+
+    return 'Count of persons: ' + str(count)
+
+def second_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if date_now.now().year - person['BD'].year < 12:
+            person['Price'] = person['Price'] - person['Price'] * 0.3
+            price = person['Price']
+            print("Name:", person['Name'], "Price with sale: " + f'{int(price)}')
+            count += 1
+
+    return 'Count of persons: ' + str(count)
+    
+def third_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if person['BD'].year > 1980 and person['Sex'] == 'ч':
+            print("Name:", person['Name'])
+            count += 1
+
+    return 'Count of persons: ' + str(count)
+
+def fourth_task(my_info: MyInfo) -> str:
+    count = 0
+    mans = 0
+
+    for person in my_info.get_info():
+        if person['BD'].month == 11:
+            print("Name:", person['Name'])
+            count += 1
+            
+            if person['Sex'] == 'ч':
+                mans += 1
+
+    return 'Count of persons: ' + str(count) + " mans from list: " + str(mans)
+
+def fifth_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if person['Country'] == 'Німеччина':
+            print("Name:", person['Name'])
+            count += 1
+
+    return 'Count of persons: ' + str(count)
+
+def six_task(my_info: MyInfo) -> str:
+    # https://lifehacker.ru/kakoj-den-nedeli/ 
+    races = 0
+
+    for person in my_info.get_info():
+        two_last_year_numbers = person['Departure_date'].year % 100
+        year_code = (6 + two_last_year_numbers + two_last_year_numbers / 4) % 7
+        month_codes = [1, 4, 4, 0, 2, 5, 0, 3, 6, 1, 4, 6]
+        day_of_the_week = (person['Departure_date'].day + month_codes[person['Departure_date'].month - 1] + year_code) % 7
+
+        if int(day_of_the_week) + 1 == 4:
+            print('Country:', person['Country'], 'Avia company:', person['Avia_company'], 'Time of depart:', person['Departure_time'], 'Full price:', person['Price'])
+            races += 1
+    
+    return 'Races evey Firthday: ' + str(races)
+
+def seventh_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if person['Departure_date'].month >= 9 and person['Departure_date'].month <= 11:
+            print("Avia company:", person['Avia_company'])
+            count += 1
+
+    return 'Races in the autumn: ' + str(count)
+
+def eight_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if date_now.now().year - person['BD'].year > 55:
+            person['Price'] = person['Price'] - person['Price'] * 0.1
+            price = person['Price']
+            print("Name:", person['Name'], "Price with sale: " + f'{int(price)}')
+            count += 1
+
+    return 'Count of persons: ' + str(count)
+
+def nineth_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if person['Departure_date'].month == 12 and person['Departure_date'].day == 25:
+            person['Price'] = person['Price'] - person['Price'] * 0.4
+            price = person['Price']
+            print("Name:", person['Name'], "Price with sale: " + f'{int(price)}')
+            count += 1
+
+    return 'Count of persons: ' + str(count)
+
+def tenth_task(my_info: MyInfo) -> str:
+    count = 0
+
+    for person in my_info.get_info():
+        if person['Departure_date'].day <= 10:
+            print("Avia company:", person['Avia_company'])
+            count += 1
+
+    return 'Count of races: ' + str(count)
+
 def main():
     my_info = MyInfo()
 
     fill_info(my_info)
-    print(my_info.get_info())
-    # print(my_info.get_info()[0]['BD'])
 
+    #1.
+    print(first_task(my_info))
+    print()
+    #2.
+    print(second_task(my_info))
+    print()
+    #3.
+    print(third_task(my_info))
+    print()
+    #4.
+    print(fourth_task(my_info))
+    print()
+    #5.
+    print(fifth_task(my_info))
+    print()
+    #6.
+    print(six_task(my_info))
+    print()
+    #7.
+    print(seventh_task(my_info))
+    print()
+    #8.
+    print(eight_task(my_info))
+    print()
+    #9.
+    print(nineth_task(my_info))
+    print()
+    #10.
+    print(tenth_task(my_info))
+    print()
 
 if __name__ == "__main__":
     main()
