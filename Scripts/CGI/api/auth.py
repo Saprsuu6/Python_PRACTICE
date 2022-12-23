@@ -81,10 +81,10 @@ if user is None:
 # генерируем токен для пользователя
 
 access_token = access_token_dao.get_by_user(user)
-# ask about date tome converting !!!
+# use timedelta to set the different between data
 #date_time_obj = datetime.strptime(access_token.expires, '%Y-%m-%d %H:%M:%S')
-# logging.warning(access_token.expires)
-#   access_token.expires, "%Y-%m-%d %H:%M:%S").date())
+#logging.warning(access_token.expires)
+   #access_token.expires, "%Y-%m-%d %H:%M:%S").date())
 
 if access_token == None:
     access_token = access_token_dao.create(user)

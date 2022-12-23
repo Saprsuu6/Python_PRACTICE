@@ -35,10 +35,9 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        ///!!!
         if (window.sessionStorage.getItem("access_token") != null) {
           var div = document.querySelector("#top_form");
-          div.setAttribute("dispaly", "none");
+          div.style.display='none';
 
           const loginButton = document.querySelector("#login-button");
           if (!loginButton) throw "DOMContentLoaded: #login-button not found";
