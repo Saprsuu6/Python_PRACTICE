@@ -5,6 +5,7 @@ import db_connect
 import errors
 import check_auth
 import genral_header
+import asyncio
 # API demo - доступ до ресурсу обмеженого доступу (Resource Server)
 
 
