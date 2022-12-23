@@ -8,4 +8,4 @@ def check_auth():
     else:
         # відправляємо 401
         errors.send401()
-        exit()
+        raise Exception("Authorization required")

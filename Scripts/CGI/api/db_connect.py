@@ -8,4 +8,4 @@ def connect():
         return mysql.connector.connect(**db.conf)
     except mysql.connector.Error as err:
         errors.send401(err)
-        exit()
+        raise Exception(err)
