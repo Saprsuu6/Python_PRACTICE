@@ -35,8 +35,10 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", () => {
+        ///!!!
         if (window.sessionStorage.getItem("access_token") != null) {
-          document.querySelector("#top_form").setAttribute("display", "none");
+          var div = document.querySelector("#top_form");
+          div.setAttribute("dispaly", "none");
         }
 
         const loginButton = document.querySelector("#login-button");
