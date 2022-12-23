@@ -11,6 +11,9 @@ import db
 
 # Authorization Server
 
+logging.basicConfig(filename='app.log', filemode='w',
+                    format='%(name)s - %(levelname)s - %(message)s')
+
 
 def send401(message: str = None) -> None:
     print("Status: 401 Unauthorized")
@@ -78,10 +81,8 @@ if user is None:
 
 access_token = access_token_dao.get_by_user(user)
 
-if access_token != None:
+if access_token == None:
     access_token = access_token_dao.create(user)
-
-#access_token = access_token_dao.create(user)
 
 if not access_token:
     send401("Token creation error")
