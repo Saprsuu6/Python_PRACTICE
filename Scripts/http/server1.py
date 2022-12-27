@@ -6,13 +6,14 @@ import os
 class MainHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         # вывод в консоль (не в ответ сервера)
-        print(self.path)
+        print("path: ", self.path)
         # разделенный на части запрос, path_parts[0] - пустой, т.к. path начинается со "/"
         path_parts = self.path.split("/")
         if path_parts[1] == "":
-            path_parts[1] = "index.html"
-        # print( os.getcwd() )
+            path_parts[1] = "static/index.html"
+        # print(os.getcwd())
         fname = "./http/" + path_parts[1]
+        # print(fname)
         if os.path.isfile(fname):              # запрос - существующий файл
             # print( fname, "file" )
             self.flush_file(fname)
@@ -42,6 +43,11 @@ class MainHandler(BaseHTTPRequestHandler):
             content_type = "image/x-icon"
         elif ext == 'html':
             content_type = "text/html"
+            # self.flush_file("./http/static/css/style.css")
+        elif ext == 'css':
+            content_type = "text/css"
+        elif ext == 'js':
+            content_type = "application/json"
         else:
             content_type = "application/octet-stream"
 
