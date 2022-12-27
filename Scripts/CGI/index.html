@@ -35,19 +35,25 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        if (window.sessionStorage.getItem("access_token") != null) {
-          var div = document.querySelector("#top_form");
-          div.style.display = "none";
+        var token = window.sessionStorage.getItem("access_token");
+        console.log(token);
 
+        if (token == null) {
           const loginButton = document.querySelector("#login-button");
           if (!loginButton) throw "DOMContentLoaded: #login-button not found";
           loginButton.addEventListener("click", loginButtonClick);
-
-          const itemsButton = document.querySelector("#items-button");
-          if (!itemsButton) throw "DOMContentLoaded: #items-button not found";
-          itemsButton.addEventListener("click", itemsButtonClick);
+        } else {
+          hide_auth();
         }
+
+        const itemsButton = document.querySelector("#items-button");
+        if (!itemsButton) throw "DOMContentLoaded: #items-button not found";
+        itemsButton.addEventListener("click", itemsButtonClick);
       });
+      function hide_auth() {
+        var div = document.querySelector("#top_form");
+        div.style.display = "none";
+      }
       function itemsButtonClick(e) {
         var access_token = window.sessionStorage.getItem("access_token");
         var term = new Date(window.sessionStorage.getItem("expires_in"));
@@ -55,26 +61,25 @@
           alert("Сначала авторизуйтесь");
           return;
         }
-        alert(
-          new Date() >= term
-            ? "Срок действия токена истёк"
-            : "Срок действия токена не истёк"
-        );
-        fetch("/items", {
-          method: "GET",
-          headers: {
-            Authorization: "Bearer " + access_token,
-          },
-        }).then(async (r) => {
-          if (r.status == 401) {
-            alert(await r.text());
-            // проверка токена отклонена - удалить токен из хранилища
-          } else if (r.status == 200) {
-            out.innerText = await r.text();
-          } else {
-            console.log(r);
-          }
-        });
+        if (new Date() >= term) {
+          alert("Срок действия токена истёк");
+        } else {
+          fetch("/items", {
+            method: "GET",
+            headers: {
+              Authorization: "Bearer " + access_token,
+            },
+          }).then(async (r) => {
+            if (r.status == 401) {
+              alert(await r.text());
+              // проверка токена отклонена - удалить токен из хранилища
+            } else if (r.status == 200) {
+              out.innerText = await r.text();
+            } else {
+              console.log(r);
+            }
+          });
+        }
       }
       function loginButtonClick(e) {
         const userLogin = document.querySelector("#user-login");

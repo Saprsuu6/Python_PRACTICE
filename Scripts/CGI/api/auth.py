@@ -8,6 +8,7 @@ import db_connect
 import check_auth
 import genral_header
 import asyncio
+import datetime
 
 # Authorization Server
 
@@ -15,18 +16,18 @@ logging.basicConfig(filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
 
 
-def connect_to_db():
+async def connect_to_db():
     '''Connect to DataBase'''
     return db_connect.connect()
 
 
-def check_auth_header():
+async def check_auth_header():
     '''Check authedification header'''
     return check_auth.check_auth()
 
 
-def check_auth_scheme(auth_header):
-    '''Check authedification scheme'''
+async def check_auth_scheme(auth_header):
+    '''Check authedification scheme BASIC'''
     if auth_header.startswith('Basic'):
         return auth_header[6:]
     else:
@@ -34,7 +35,7 @@ def check_auth_scheme(auth_header):
         raise Exception("Authorization scheme Basic required")
 
 
-def parse_base64(credentials):
+async def parse_base64(credentials):
     '''Convert string from base64 to utf8'''
     try:
         return base64.b64decode(credentials, validate=True).decode('utf-8')
@@ -43,7 +44,7 @@ def parse_base64(credentials):
         raise Exception("Credentials invalid: Base64 string required")
 
 
-def check_data_format(data):
+async def check_data_format(data):
     '''Chech credentials format'''
     if not ':' in data:
         errors.send401("Credentials invalid: Login:Password format expected")
@@ -53,14 +54,14 @@ def check_data_format(data):
     return [user_login, user_password]
 
 
-def dao_connect(connection):
+async def dao_connect(connection):
     '''Connecting to DAO services'''
     user_dao = dao.UserDAO(connection)
     access_token_dao = dao.AccessTokenDAO(connection)
     return [user_dao, access_token_dao]
 
 
-def get_user_by_credentials(user_dao, user_login, user_password):
+async def get_user_by_credentials(user_dao, user_login, user_password):
     '''Get user from DataBase'''
     user = user_dao.auth_user(user_login, user_password)
     if user is None:
@@ -70,23 +71,34 @@ def get_user_by_credentials(user_dao, user_login, user_password):
     return user
 
 
-def generate_token(access_token_dao, user):
+async def generate_token(access_token_dao, user):
     '''Generate or return access token from DataBase'''
     access_token = access_token_dao.get_by_user(user)
+
+    '''
+    deltatime = (datetime.datetime.now() -
+                 datetime.timedelta(days=access_token.expires.day, hours=access_token.expires.hour, minutes=access_token.expires.minute))
+
+    logging.warning(datetime.datetime.now())
+    logging.warning(access_token.expires)
+    logging.warning(datetime.datetime.now() - access_token.expires)
+    logging.warning(deltatime)
     # use timedelta to set the different between data
-    #date_time_obj = datetime.strptime(access_token.expires, '%Y-%m-%d %H:%M:%S')
+    # date_time_obj = datetime.strptime(access_token.expires, '%Y-%m-%d %H:%M:%S')
     # logging.warning(access_token.expires)
     # access_token.expires, "%Y-%m-%d %H:%M:%S").date())
+    '''
 
     if access_token == None:
         access_token = access_token_dao.create(user)
-
     if not access_token:
         errors.send401("Token creation error")
         raise Exception("Token creation error")
 
+    return access_token
 
-def send_finally_headers(access_token):
+
+async def send_finally_headers(access_token):
     genral_header.send_header()
     print("Cache-Control: no-store")
     print("Pragma: no-cache")
@@ -99,81 +111,43 @@ def send_finally_headers(access_token):
 
 
 async def main():
-    # exit() in except
-    pass
+    connect = asyncio.create_task(connect_to_db())
+    check_auth = asyncio.create_task(check_auth_header())
 
+    try:
+        connection = await connect
+        auth_header = await check_auth
+
+        scheme = asyncio.create_task(check_auth_scheme(auth_header))
+        credentials = await scheme
+
+        parse = asyncio.create_task(parse_base64(credentials))
+        data = await parse
+
+        check_format = asyncio.create_task(check_data_format(data))
+        datas = await check_format
+
+        dao_connection = asyncio.create_task(dao_connect(connection))
+        daos = await dao_connection
+
+        get_user = asyncio.create_task(
+            get_user_by_credentials(daos[0], datas[0], datas[1]))
+        user = await get_user
+
+        gen_token = asyncio.create_task(
+            generate_token(daos[1], user))
+        access_token = await gen_token
+
+        asyncio.create_task(
+            send_finally_headers(access_token))
+
+        # logging.warning(send_headers) !!! learn how to log
+    except:
+        exit()
+    finally:
+        pass
 
 asyncio.run(main())
-
-# дістаємо заголовок Authorization
-auth_header = check_auth.check_auth()
-
-# Перевіряємо схему авторизації - має бути Basic
-if auth_header.startswith('Basic'):
-    credentials = auth_header[6:]
-else:
-    errors.send401("Authorization scheme Basic required")
-    exit()
-
-# credentials (параметр заголовку) - це Base64 кодований рядок "логін:пароль"
-# у скрипті info підготуємо зразок для "admin:123"  --> YWRtaW46MTIz
-# декодуємо credentials
-
-try:
-    data = base64.b64decode(credentials, validate=True).decode('utf-8')
-except:
-    errors.send401("Credentials invalid: Base64 string required")
-    exit()
-
-# Перевіряємо формат (у data має бути :)
-if not ':' in data:
-    errors.send401("Credentials invalid: Login:Password format expected")
-    exit()
-
-
-user_login, user_password = data.split(':', maxsplit=1)
-
-
-# підключаємось до БД
-connection = db_connect.connect()
-
-
-# підключаємо userdao
-user_dao = dao.UserDAO(connection)
-access_token_dao = dao.AccessTokenDAO(connection)
-
-
-# получаем пользователя по логину и паролю
-user = user_dao.auth_user(user_login, user_password)
-if user is None:
-    errors.send401("Credentials rejected")
-    exit()
-
-# генерируем токен для пользователя
-
-access_token = access_token_dao.get_by_user(user)
-# use timedelta to set the different between data
-#date_time_obj = datetime.strptime(access_token.expires, '%Y-%m-%d %H:%M:%S')
-# logging.warning(access_token.expires)
-# access_token.expires, "%Y-%m-%d %H:%M:%S").date())
-
-if access_token == None:
-    access_token = access_token_dao.create(user)
-
-if not access_token:
-    errors.send401("Token creation error")
-    exit()
-
-# Успішне завершення
-genral_header.send_header()
-print("Cache-Control: no-store")
-print("Pragma: no-cache")
-print()
-print(f'''{{
-    "access_token": "{access_token.token}",
-    "token_type": "Bearer",
-    "expires_in": "{access_token.expires}"
-}}''', end='')
 
 # An example of such a (https://datatracker.ietf.org/doc/html/rfc6750 page 9)
 #    response is:
