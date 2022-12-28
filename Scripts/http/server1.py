@@ -1,20 +1,29 @@
 import base64
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
+import db
 
 
 class MainHandler(BaseHTTPRequestHandler):
+    def __init__(self, request: bytes, client_address: tuple[str, int], server) -> None:
+        super().__init__(request, client_address, server)
+        print("init", self.command)
+
     def do_GET(self) -> None:
         # вывод в консоль (не в ответ сервера)
-        print("path: ", self.path)
+        print("path:", self.path)
         # разделенный на части запрос, path_parts[0] - пустой, т.к. path начинается со "/"
         path_parts = self.path.split("/")
-        if path_parts[1] == "":
-            path_parts[1] = "static/index.html"
+        # if path_parts[1] == "":
+        #     path_parts[1] = "static/index.html"
+        if self.path == '/':
+            self.path = '/static/index.html'
         # print(os.getcwd())
-        fname = "./http/" + path_parts[1]
+        fname = "./http" + self.path
+        print(fname)
         # print(fname)
         if os.path.isfile(fname):              # запрос - существующий файл
+            print(fname)
             # print( fname, "file" )
             self.flush_file(fname)
         elif path_parts[1] == "auth":            # запрос - /auth
@@ -27,13 +36,14 @@ class MainHandler(BaseHTTPRequestHandler):
             self.wfile.write("<h1>404</h1>".encode())
         return
 
-    def log_request(self, code: int | str = ..., size: int | str = ...) -> None:
+    def log_request(self, code: int or str = ..., size: int or str = ...) -> None:
         '''Метод, выводящий в консоль данные о запросе'''
         # return super().log_request(code, size)
         return
 
     def flush_file(self, filename) -> None:
         # Определить расширение файла filename
+
         ext = filename.split(".")[-1]
 
         # Установить Content-Type согласно расширению
@@ -43,7 +53,6 @@ class MainHandler(BaseHTTPRequestHandler):
             content_type = "image/x-icon"
         elif ext == 'html':
             content_type = "text/html"
-            # self.flush_file("./http/static/css/style.css")
         elif ext == 'css':
             content_type = "text/css"
         elif ext == 'js':
@@ -91,10 +100,6 @@ class MainHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write((user_login + user_password).encode())
         return
-    # Д.З. Реализовать "глубокий" поиск файлов: создать папки css, js
-    # поместить в них файлы style.css, script.js с демонстрационным действием.
-    # В главном index.html подключить стиль и скрипт
-    # Обеспечить правильную работу подключаемых файлов
 
     def send_401(self, message=None):
         self.send_response(401)
@@ -106,11 +111,14 @@ class MainHandler(BaseHTTPRequestHandler):
             self.wfile.write(message.encode())
 
 
+
 def main() -> None:
-    http_server = HTTPServer(('127.0.0.1', 88), MainHandler)
+    # http_server = HTTPServer(('127.0.0.1', 88), MainHandler)
     try:
-        print("Server started")
-        http_server.serve_forever()
+        cnx = mysql.connector.connect(user='joe', database='test')
+        print(connection)
+        #print("Server started")
+        #http_server.serve_forever()
     except:
         print("Server stopped")
 
