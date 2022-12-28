@@ -1,14 +1,55 @@
 import base64
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
+import mysql.connector
+import sys
+sys.path.append( './cgi/api/' )
 import db
+import dao
 
 
-class MainHandler(BaseHTTPRequestHandler):
-    def __init__(self, request: bytes, client_address: tuple[str, int], server) -> None:
-        super().__init__(request, client_address, server)
-        print("init", self.command)
+class DbService :
+    __connection:mysql.connector.MySQLConnection = None
 
+    def get_connection( self ) -> mysql.connector.MySQLConnection :
+        if DbService.__connection is None or not DbService.__connection.is_connected() :
+            # print( db.conf )
+            try :
+                DbService.__connection = mysql.connector.connect( **db.conf )
+            except mysql.connector.Error as err :
+                print( err )
+                DbService.__connection = None
+        return DbService.__connection
+
+
+class DaoService :
+
+    def __init__( self, db_service ) -> None:
+        self.__db_service: DbService = db_service
+        self.__user_dao: dao.UserDAO = None                  # угода іменування: до полів з "__" додається назва класу: 
+        self.__access_token_dao: dao.AccessTokenDAO = None   # "DaoService._DaoService__user_dao". Це аналог "private"
+        return
+
+    def get_user_dao( self ) -> dao.UserDAO :
+        if self.__user_dao is None :
+            self.__user_dao = dao.UserDAO( self.__db_service.get_connection() )
+        return self.__user_dao
+
+    def get_access_token_dao( self ) -> dao.AccessTokenDAO :
+        if self.__access_token_dao is None :
+            self.__access_token_dao = dao.AccessTokenDAO( self.__db_service.get_connection() )
+        return self.__access_token_dao
+
+# print( DaoService.__user_dao )  # AttributeError: type object 'DaoService' has no attribute '__user_dao'
+# print( DaoService._DaoService__user_dao )  # OK
+
+dao_service: DaoService = None
+
+class MainHandler( BaseHTTPRequestHandler ) :
+    def __init__( self, request, client_address, server ) -> None:
+        super().__init__(request, client_address, server)   # RequestScoped - створюється при кожному запиті
+        # print( 'init', self.command )    # self.command - метод запиту (GET, POST, ...)
+    
     def do_GET(self) -> None:
         # вывод в консоль (не в ответ сервера)
         print("path:", self.path)
@@ -36,111 +77,176 @@ class MainHandler(BaseHTTPRequestHandler):
             self.wfile.write("<h1>404</h1>".encode())
         return
 
+    def auth( self ) -> None :
+        try:
+            # дістаємо заголовок Authorization
+            auth_header = self.check_auth()
+
+            # Перевіряємо схему авторизації - має бути Basic
+            credentials = self.check_auth_scheme(auth_header)
+
+            # декодуємо credentials
+            data = self.parse_base64(credentials)
+
+            # Перевіряємо формат (у data має бути :), розділяємо логін та пароль за ":"
+            datas = self.check_data_format(data)
+
+            # підключаємо userdao
+            user_dao = dao_service.get_user_dao()
+            user = self.get_user_by_credentials(user_dao, datas[0], datas[1])
+
+            # get user access token  
+            access_token_dao = dao_service.get_access_token_dao()     
+            acess_token = self.generate_token(self, access_token_dao, user)
+
+            # send finally sucessull headers with token
+            self.send_200( acess_token )
+        except:
+            pass
+        finally:
+            return 
+
+    def check_auth_scheme(self, auth_header):
+        '''Check authedification scheme BASIC'''
+        if auth_header.startswith('Basic'):
+            return auth_header[6:]
+        else:
+            self.send401("Authorization scheme Basic required")
+            raise Exception("Authorization scheme Basic required")
+
+    def check_auth(self):
+        '''Check authedification header'''
+        if 'HTTP_AUTHORIZATION' in os.environ.keys():
+            return os.environ['HTTP_AUTHORIZATION']
+        else:
+            # відправляємо 401
+            self.send401()
+            raise Exception()
+
+    def parse_base64(self, credentials):
+        '''Convert string from base64 to utf8'''
+        try:
+            return base64.b64decode(credentials, validate=True).decode('utf-8')
+        except:
+            self.send401("Credentials invalid: Base64 string required")
+            raise Exception("Credentials invalid: Base64 string required")
+
+    def check_data_format(self, data):
+        '''Chech credentials format'''
+        if not ':' in data:
+            self.send401("Credentials invalid: Login:Password format expected")
+            raise Exception("Credentials invalid: Login:Password format expected")
+
+        user_login, user_password = data.split(':', maxsplit=1)
+        return [user_login, user_password]
+
+    def get_user_by_credentials(self, user_dao, user_login, user_password):
+        '''Get user from DataBase'''
+        user = user_dao.auth_user(user_login, user_password)
+        if user is None:
+            self.send401("Credentials rejected")
+            raise Exception("Credentials rejected")
+
+        return user
+
+    def generate_token(self, access_token_dao, user) -> str:
+        '''Generate or return access token from DataBase'''
+        access_token = access_token_dao.get_by_user(user)
+
+        if access_token == None:
+            access_token = access_token_dao.create(user)
+        if not access_token:
+            self.send401("Token creation error")
+            raise Exception("Token creation error")
+
+        return access_token
+
+    def send_401( self, message:str = None ) -> None :
+        self.send_response( 401, "Unauthorized"  )
+        if message : self.send_header( "Content-Type", "text/plain" )
+        self.end_headers()
+        if message : self.wfile.write( message.encode() )
+        return
+
+    def send_200( self, message:str = None, type:str = "text" ) -> None :
+        self.send_response( 200 )
+        if type == 'json' :
+            content_type = 'application/json; charset=UTF-8'
+        else :
+            content_type = 'text/plain; charset=UTF-8'
+        self.send_header( "Content-Type", content_type )
+        self.end_headers()
+        if message:
+            self.wfile.write( message.encode() )
+        return
+
+    def flush_file( self, filename ) -> None :
+        # Визначаємо розширення файлу
+        extension = filename[ filename.rindex(".") + 1 : ]
+        # print( extension )
+        # Встановлюємо тип (Content-Type)
+        if extension == 'ico' :
+            content_type = 'image/x-icon'
+        elif extension in ( 'html', 'htm' ) :
+            content_type = 'text/html'
+        elif extension == 'css' :
+            content_type = "text/css"
+        elif extension == 'js' :
+            content_type = "application/javascript"
+        else :
+            content_type = 'application/octet-stream'
+
+        self.send_response( 200 )
+        self.send_header( "Content-Type", content_type )
+        self.end_headers()
+        # Копіюємо вміст файлу у тіло відповіді
+        with open( filename, "rb" ) as f :
+            self.wfile.write( f.read() )
+        return
+
+    # Override
     def log_request(self, code: int or str = ..., size: int or str = ...) -> None:
-        '''Метод, выводящий в консоль данные о запросе'''
+        # логування запиту у консоль
         # return super().log_request(code, size)
         return
 
-    def flush_file(self, filename) -> None:
-        # Определить расширение файла filename
 
-        ext = filename.split(".")[-1]
-
-        # Установить Content-Type согласно расширению
-        if ext in ('png', 'bmp'):
-            content_type = "image/" + ext
-        elif ext == 'ico':
-            content_type = "image/x-icon"
-        elif ext == 'html':
-            content_type = "text/html"
-        elif ext == 'css':
-            content_type = "text/css"
-        elif ext == 'js':
-            content_type = "application/json"
-        else:
-            content_type = "application/octet-stream"
-
-        self.send_response(200)
-        self.send_header("Content-Type", content_type)
-        self.end_headers()
-        # Передать файл в ответ
-        with open(filename, "rb") as f:
-            self.wfile.write(f.read())
-        return
-
-    def auth(self):   # API
-        # Проверяем наличие заголовка Authorization
-        auth_header = self.headers.get("Authorization")
-        if auth_header is None:
-            self.send_401("Authorization header required")
-            return
-        # Проверяем схему авторизации Basic
-        if not auth_header.startswith('Basic'):
-            self.send_401("Basic Authorization header required")
-            return
-        # декодируем переданную строку
-        try:
-            cred = base64.b64decode(
-                auth_header[6:], validate=True).decode('utf-8')
-        except:
-            self.send_401(
-                "Malformed credentials: Login:Password base64 encoded expected")
-            return
-        # Проверяем формат строки (должен быть ":")
-        if not ':' in cred:
-            self.send_401(
-                "Malformed credentials: Login:Password base64 encoded required")
-            return
-
-        # Разделяем логин и пароль по первому ":" (в пароле могут быть свои ":")
-        user_login, user_password = cred.split(':', maxsplit=1)
-
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.end_headers()
-        self.wfile.write((user_login + user_password).encode())
-        return
-
-    def send_401(self, message=None):
-        self.send_response(401)
-        self.send_header("Status", "401 Unauthorized")
-        if message:
-            self.send_header("Content-Type", "text/plain")
-        self.end_headers()
-        if message:
-            self.wfile.write(message.encode())
+def main() -> None :
+    global dao_service
+    http_server = HTTPServer( 
+        ( '127.0.0.1', 88 ),     # host + port = endpoint
+        MainHandler )
+    try :
+        print( "Server started" )
+        dao_service = DaoService( DbService() )   # ~ Inject
+        print(dao_service)
+        http_server.serve_forever()       
+    except :
+        print( "Server stopped" )
 
 
-
-def main() -> None:
-    # http_server = HTTPServer(('127.0.0.1', 88), MainHandler)
-    try:
-        cnx = mysql.connector.connect(user='joe', database='test')
-        print(connection)
-        #print("Server started")
-        #http_server.serve_forever()
-    except:
-        print("Server stopped")
-
-
-if __name__ == "__main__":
+if __name__ == "__main__" :
     main()
 
 '''
-Другой способ органиции сервера - собственный сервер с обработчиком запросов
-Инструменты - в модуле http.server
- HTTPServer - класс для запуска сервера
- BaseHTTPRequestHandler - родительский класс для обработчиков запросов
-Особенности:
- обработчик запросов определяет методы do_GET, do_POST, ...
-   вместо параметров метода определяются поля/методы класса для работы с запросом/ответом
- вызов print выводит данные в консоль запуска скрипта, для передачи данных в ответ
-   нужен вызов спец. методов 
- все запросы заданным методом попадают в обработчик, запросы к файлам автоматически
-   не прорабатываются. Передачу всех файлов необходимо прописывать в обработчике
-   Также не прорабатывается маршрутизация: /items/phones/123 также ведет просто к do_GET
- для тела ответа предоставляется self.wfile. в который в бинарном виде записываются
-   данные 
-self.path - строка запроса. Из нее нужно выделить имя файла и проверить на то, что этот
-   файл существует. Если есть - передать как ответ
+Інший спосіб створення серверних додатків (поруч з CGI) - утворення
+"власного" сервера, який прослуховує порт та запускає оброблення запитів.
+Засоби:
+ http.server - модуль
+ HTTPServer - клас для старту сервера
+ BaseHTTPRequestHandler - базовий клас для обробників запитів (~ Servlet)
+Особливості (у порівнянні з CGI)
+- сервер запускається засобами Python з консолі, відповідно print діє 
+    як у скриптах - виводить у консоль (не у відповідь сервера)
+- обробник запитів (Handler) - це клас нащадок BaseHTTPRequestHandler,
+    його методи відповідають формі do_GET, do_POST, ... ,
+    методи не приймають параметрів, усі дані про requestorresponse
+    проходять як поля/методи self.(send_response, send_header)
+- формування тіла здійснюється за файловим протоколом через запис
+    у self.wfile Особливість - він пише не рядки, а бінарні дані
+- успішні запити логуються у консоль (127.0.0.1 - - [27/Dec/2022 12:45:15] "GET / HTTP/1.1" 200 - )
+    за це відповідає метод log_request, який можна переозначити
+- запити не маршрутизуються (всі потрапляють у do_GET), наявність 
+    файлів не перевіряється (запити на файли також потрапляють у do_GET)
+    Необхідно самостійно опрацьовувати запити на файли
 '''

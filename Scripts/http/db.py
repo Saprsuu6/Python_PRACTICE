@@ -1,9 +1,9 @@
 conf = {
-    "host":     "localhost",
+    "host":     "http://sql7.freesqldatabase.com/",
     "port":     3306,
-    "database": "py191",
-    "user":     "py191_user",
-    "password": "pass_191",
+    "database": "sql7586905",
+    "user":     "sql7586905",
+    "password": "c7EmgCChUf",
 
     "charset":  "utf8mb4",
     "use_unicode": True,
