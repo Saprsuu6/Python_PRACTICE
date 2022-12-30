@@ -1,55 +1,69 @@
+import dao
+import db
 import base64
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
-import mysql.connector
 import sys
-sys.path.append( './cgi/api/' )
-import db
-import dao
+# sys.path.clear()
+# sys.path.insert(0,'C:/Users/Sapr_suu6/AppData/Roaming/Python/Python37/site-packages/')
+import mysql.connector
+import asyncio
+import re
+import json
 
 
-class DbService :
-    __connection:mysql.connector.MySQLConnection = None
+class DbService:
+    __connection: mysql.connector.MySQLConnection = None
 
-    def get_connection( self ) -> mysql.connector.MySQLConnection :
-        if DbService.__connection is None or not DbService.__connection.is_connected() :
+    def get_connection(self) -> mysql.connector.MySQLConnection:
+        if DbService.__connection is None or not DbService.__connection.is_connected():
             # print( db.conf )
-            try :
-                DbService.__connection = mysql.connector.connect( **db.conf )
-            except mysql.connector.Error as err :
-                print( err )
+            try:
+                DbService.__connection = mysql.connector.connect(**db.conf)
+            except mysql.connector.Error as err:
+                print(err)
                 DbService.__connection = None
         return DbService.__connection
 
 
-class DaoService :
+class DaoService:
 
-    def __init__( self, db_service ) -> None:
+    def __init__(self, db_service) -> None:
         self.__db_service: DbService = db_service
-        self.__user_dao: dao.UserDAO = None                  # угода іменування: до полів з "__" додається назва класу: 
-        self.__access_token_dao: dao.AccessTokenDAO = None   # "DaoService._DaoService__user_dao". Це аналог "private"
+        # угода іменування: до полів з "__" додається назва класу:
+        self.__user_dao: dao.UserDAO = None
+        # "DaoService._DaoService__user_dao". Це аналог "private"
+        self.__access_token_dao: dao.AccessTokenDAO = None
         return
 
-    def get_user_dao( self ) -> dao.UserDAO :
-        if self.__user_dao is None :
-            self.__user_dao = dao.UserDAO( self.__db_service.get_connection() )
+    def get_user_dao(self) -> dao.UserDAO:
+        if self.__user_dao is None:
+            self.__user_dao = dao.UserDAO(self.__db_service.get_connection())
         return self.__user_dao
 
-    def get_access_token_dao( self ) -> dao.AccessTokenDAO :
-        if self.__access_token_dao is None :
-            self.__access_token_dao = dao.AccessTokenDAO( self.__db_service.get_connection() )
+    def get_access_token_dao(self) -> dao.AccessTokenDAO:
+        if self.__access_token_dao is None:
+            self.__access_token_dao = dao.AccessTokenDAO(
+                self.__db_service.get_connection())
         return self.__access_token_dao
+
+    def get_clear_connection(self) -> mysql.connector.MySQLConnection:
+        return self.__db_service.get_connection()
+
 
 # print( DaoService.__user_dao )  # AttributeError: type object 'DaoService' has no attribute '__user_dao'
 # print( DaoService._DaoService__user_dao )  # OK
 
+
 dao_service: DaoService = None
 
-class MainHandler( BaseHTTPRequestHandler ) :
-    def __init__( self, request, client_address, server ) -> None:
-        super().__init__(request, client_address, server)   # RequestScoped - створюється при кожному запиті
+
+class MainHandler(BaseHTTPRequestHandler):
+    def __init__(self, request, client_address, server) -> None:
+        # RequestScoped - створюється при кожному запиті
+        super().__init__(request, client_address, server)
         # print( 'init', self.command )    # self.command - метод запиту (GET, POST, ...)
-    
+
     def do_GET(self) -> None:
         # вывод в консоль (не в ответ сервера)
         print("path:", self.path)
@@ -61,7 +75,6 @@ class MainHandler( BaseHTTPRequestHandler ) :
             self.path = '/static/index.html'
         # print(os.getcwd())
         fname = "./http" + self.path
-        print(fname)
         # print(fname)
         if os.path.isfile(fname):              # запрос - существующий файл
             print(fname)
@@ -69,6 +82,8 @@ class MainHandler( BaseHTTPRequestHandler ) :
             self.flush_file(fname)
         elif path_parts[1] == "auth":            # запрос - /auth
             self.auth()
+        elif path_parts[1] == "items":            # запрос - /items
+            self.items()
         else:
             # print( fname, "not file" )
             self.send_response(200)
@@ -77,7 +92,7 @@ class MainHandler( BaseHTTPRequestHandler ) :
             self.wfile.write("<h1>404</h1>".encode())
         return
 
-    def auth( self ) -> None :
+    def auth(self) -> None:
         try:
             # дістаємо заголовок Authorization
             auth_header = self.check_auth()
@@ -95,18 +110,22 @@ class MainHandler( BaseHTTPRequestHandler ) :
             user_dao = dao_service.get_user_dao()
             user = self.get_user_by_credentials(user_dao, datas[0], datas[1])
 
-            # get user access token  
-            access_token_dao = dao_service.get_access_token_dao()     
-            acess_token = self.generate_token(self, access_token_dao, user)
+            # get user access token
+            access_token_dao = dao_service.get_access_token_dao()
+            access_token = self.generate_token(access_token_dao, user)
 
             # send finally sucessull headers with token
-            self.send_200( acess_token )
-        except:
-            pass
+            self.send_200(message=f'''{{
+                    "access_token": "{access_token.token}",
+                    "token_type": "Bearer",
+                    "expires_in": "{access_token.expires}"
+                }}''')
+        except Exception as error:
+            print(error)
         finally:
-            return 
+            exit()
 
-    def check_auth_scheme(self, auth_header):
+    def check_auth_scheme_BASIC(self, auth_header):
         '''Check authedification scheme BASIC'''
         if auth_header.startswith('Basic'):
             return auth_header[6:]
@@ -116,12 +135,12 @@ class MainHandler( BaseHTTPRequestHandler ) :
 
     def check_auth(self):
         '''Check authedification header'''
-        if 'HTTP_AUTHORIZATION' in os.environ.keys():
-            return os.environ['HTTP_AUTHORIZATION']
-        else:
-            # відправляємо 401
-            self.send401()
-            raise Exception()
+        auth_header = self.headers.get("Authorization")
+        if auth_header is None:
+            self.send_401("Authorization header required")
+            return Exception("Authorization header required")
+
+        return auth_header
 
     def parse_base64(self, credentials):
         '''Convert string from base64 to utf8'''
@@ -135,7 +154,8 @@ class MainHandler( BaseHTTPRequestHandler ) :
         '''Chech credentials format'''
         if not ':' in data:
             self.send401("Credentials invalid: Login:Password format expected")
-            raise Exception("Credentials invalid: Login:Password format expected")
+            raise Exception(
+                "Credentials invalid: Login:Password format expected")
 
         user_login, user_password = data.split(':', maxsplit=1)
         return [user_login, user_password]
@@ -161,47 +181,107 @@ class MainHandler( BaseHTTPRequestHandler ) :
 
         return access_token
 
-    def send_401( self, message:str = None ) -> None :
-        self.send_response( 401, "Unauthorized"  )
-        if message : self.send_header( "Content-Type", "text/plain" )
-        self.end_headers()
-        if message : self.wfile.write( message.encode() )
-        return
+    def items(self) -> None:
+        try:
+            # дістаємо заголовок Authorization
+            auth_header = self.check_auth()
 
-    def send_200( self, message:str = None, type:str = "text" ) -> None :
-        self.send_response( 200 )
-        if type == 'json' :
-            content_type = 'application/json; charset=UTF-8'
-        else :
-            content_type = 'text/plain; charset=UTF-8'
-        self.send_header( "Content-Type", content_type )
+            # extect token
+            data = self.extract_token(auth_header)
+
+            # get token by user credentials
+            connection = dao_service.get_clear_connection()
+            token_obj = self.get_token(connection, data)
+
+            # check_valid
+            self.validate_token(self, token_obj.token)
+
+            user_dao = dao_service.get_user_dao()
+            #user = user_dao.get_user(id=token_obj.user_id)
+            users = user_dao.get_users(ignore_deleted=False)
+            jsonObj = json.dumps(users)
+
+            self.send_200(message=jsonObj ,type="json")
+        except Exception as error:
+            print(error)
+        finally:
+            exit()
+
+    def check_auth_scheme_BEARER(self, auth_header):
+        '''Check authorisation header'''
+        if not auth_header:
+            self.send401("Authorization header required")
+            raise Exception("Authorization header required")
+
+        if not auth_header.startswith('Bearer'):
+            self.send401("Bearer Authorization header required")
+            raise Exception("Bearer Authorization header required")
+
+    def extract_token(auth_header):
+        '''Extract the token from BEARER'''
+        return auth_header[7:]
+
+    def get_token(self, connection, access_token):
+        '''Get token from from front-end'''
+        token = dao.AccessTokenDAO(connection).get(access_token)
+        if not token:
+            self.send401("Token rejected")
+            raise Exception("Token rejected")
+
+        return token
+
+    def validate_token(self, token):
+        result = re.findall(r'^[0-9a-f]{40}$', token)
+        
+        if len(result) == 0:
+            self.send401("Token rejected")
+            raise Exception("Token rejected")
+
+
+
+    def send_401(self, message: str = None) -> None:
+        self.send_response(401, "Unauthorized")
+        if message:
+            self.send_header("Content-Type", "text/plain")
         self.end_headers()
         if message:
-            self.wfile.write( message.encode() )
+            self.wfile.write(message.encode())
         return
 
-    def flush_file( self, filename ) -> None :
+    def send_200(self, message: str = None, type: str = "text") -> None:
+        self.send_response(200)
+        if type == 'json':
+            content_type = 'application/json; charset=UTF-8'
+        else:
+            content_type = 'text/plain; charset=UTF-8'
+        self.send_header("Content-Type", content_type)
+        self.end_headers()
+        if message:
+            self.wfile.write(message.encode())
+        return
+
+    def flush_file(self, filename) -> None:
         # Визначаємо розширення файлу
-        extension = filename[ filename.rindex(".") + 1 : ]
+        extension = filename[filename.rindex(".") + 1:]
         # print( extension )
         # Встановлюємо тип (Content-Type)
-        if extension == 'ico' :
+        if extension == 'ico':
             content_type = 'image/x-icon'
-        elif extension in ( 'html', 'htm' ) :
+        elif extension in ('html', 'htm'):
             content_type = 'text/html'
-        elif extension == 'css' :
+        elif extension == 'css':
             content_type = "text/css"
-        elif extension == 'js' :
+        elif extension == 'js':
             content_type = "application/javascript"
-        else :
+        else:
             content_type = 'application/octet-stream'
 
-        self.send_response( 200 )
-        self.send_header( "Content-Type", content_type )
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
         self.end_headers()
         # Копіюємо вміст файлу у тіло відповіді
-        with open( filename, "rb" ) as f :
-            self.wfile.write( f.read() )
+        with open(filename, "rb") as f:
+            self.wfile.write(f.read())
         return
 
     # Override
@@ -210,22 +290,31 @@ class MainHandler( BaseHTTPRequestHandler ) :
         # return super().log_request(code, size)
         return
 
+    def check_auth_scheme(self, auth_header):
+        '''Check authorisation header'''
+        if not auth_header:
+            self.send401("Authorization header required")
+            raise Exception("Authorization header required")
 
-def main() -> None :
+        if not auth_header.startswith('Bearer'):
+            self.send401("Bearer Authorization header required")
+            raise Exception("Bearer Authorization header required")
+
+
+def main() -> None:
     global dao_service
-    http_server = HTTPServer( 
-        ( '127.0.0.1', 88 ),     # host + port = endpoint
-        MainHandler )
-    try :
-        print( "Server started" )
-        dao_service = DaoService( DbService() )   # ~ Inject
-        print(dao_service)
-        http_server.serve_forever()       
-    except :
-        print( "Server stopped" )
+    http_server = HTTPServer(
+        ('127.0.0.1', 88),     # host + port = endpoint
+        MainHandler)
+    try:
+        print("Server started")
+        dao_service = DaoService(DbService())   # ~ Inject
+        http_server.serve_forever()
+    except:
+        print("Server stopped")
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     main()
 
 '''

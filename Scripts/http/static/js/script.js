@@ -1,5 +1,3 @@
-alert("Hello world");
-
 document.addEventListener("DOMContentLoaded", () => {
   var token = window.sessionStorage.getItem("access_token");
   console.log(token);
@@ -37,10 +35,21 @@ function itemsButtonClick(e) {
       },
     }).then(async (r) => {
       if (r.status == 401) {
-        alert(await r.text());
-        // проверка токена отклонена - удалить токен из хранилища
+        if (r.headers.has('Content-Type'))
+          content_type = r.headers.get('Content-Type')
+
+          if (content_type == 'application/json; charset=UTF-8')
+            alert(await r.json())
+          else if  (content_type == 'text/plain; charset=UTF-8')
+            alert(await r.text());
       } else if (r.status == 200) {
-        out.innerText = await r.text();
+        if (r.headers.has('Content-Type')){
+          content_type = r.headers.get('Content-Type')
+          if (content_type == 'application/json; charset=UTF-8'){
+            responce = await r.json()
+            document.getElementById("out").innerText = responce;
+          }
+        }
       } else {
         console.log(r);
       }
